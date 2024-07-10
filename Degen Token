@@ -1,0 +1,93 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract DegenGamingToken {
+    string public name = "Degen Gaming Token";
+    string public symbol = "DGT";
+    uint8 public decimals = 18;
+    uint256 public totalSupply;
+    address public owner;
+
+    mapping(address => uint256) private balances;
+    struct Item {
+        string name;
+        uint256 price;
+    }
+    mapping(uint256 => Item) private items;
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Mint(address indexed to, uint256 value);
+    event Burn(address indexed from, uint256 value);
+    event ItemAdded(uint256 indexed itemId, string itemName, uint256 itemPrice);
+    event ItemRedeemed(address indexed from, uint256 indexed itemId, uint256 price);
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner can execute this function");
+        _;
+    }
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    function mint(address to, uint256 value) external onlyOwner {
+        require(to != address(0), "Invalid address");
+
+        totalSupply += value;
+        balances[to] += value;
+
+        emit Mint(to, value);
+        emit Transfer(address(0), to, value);
+    }
+
+    function transfer(address to, uint256 value) external returns (bool) {
+        _transfer(msg.sender, to, value);
+        return true;
+    }
+
+    function balanceOf(address account) external view returns (uint256) {
+        return balances[account];
+    }
+
+    function burn(uint256 value) external {
+        require(balances[msg.sender] >= value, "Insufficient balance");
+
+        balances[msg.sender] -= value;
+        totalSupply -= value;
+
+        emit Burn(msg.sender, value);
+        emit Transfer(msg.sender, address(0), value);
+    }
+
+    function redeem(uint256 itemId) external {
+        Item storage item = items[itemId];
+        uint256 itemPrice = item.price;
+        require(balances[msg.sender] >= itemPrice, "Insufficient balance");
+
+        balances[msg.sender] -= itemPrice;
+        totalSupply -= itemPrice;
+
+        emit ItemRedeemed(msg.sender, itemId, itemPrice);
+        emit Transfer(msg.sender, address(0), itemPrice);
+    }
+
+    function addItem(uint256 itemId, string calldata itemName, uint256 itemPrice) external onlyOwner {
+        items[itemId] = Item({name: itemName, price: itemPrice});
+        emit ItemAdded(itemId, itemName, itemPrice);
+    }
+
+    function getItem(uint256 itemId) external view returns (string memory itemName, uint256 itemPrice) {
+        Item storage item = items[itemId];
+        return (item.name, item.price);
+    }
+
+    function _transfer(address from, address to, uint256 value) internal {
+        require(to != address(0), "Invalid address");
+        require(balances[from] >= value, "Insufficient balance");
+
+        balances[from] -= value;
+        balances[to] += value;
+
+        emit Transfer(from, to, value);
+    }
+}
